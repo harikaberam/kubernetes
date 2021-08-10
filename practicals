@@ -1,0 +1,2076 @@
+
+
+
+
+
+Ubuntu 16.04 Xenial LTS for lab which I used
+
+
+
+Minikube:
+
+https://minikube.sigs.k8s.io/docs/start/
+
+Kubeadm:
+
+https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/
+
+
+Get the Docker gpg, and add it to your repository.
+In all three terminals, run the following command to get the Docker gpg key:
+
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+Then add it to your repository:
+
+sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+Get the Kubernetes gpg key, and add it to your repository.
+In all three terminals, run the following command to get the Kubernetes gpg key:
+
+curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -
+
+Then add it to your repository:
+
+cat << EOF | sudo tee /etc/apt/sources.list.d/kubernetes.list
+deb https://apt.kubernetes.io/ kubernetes-xenial main
+EOF
+Update the packages:
+
+sudo apt update
+
+echo 1 > /proc/sys/net/ipv4/ip_forward
+modprobe br_netfilter
+echo '1' > /proc/sys/net/bridge/bridge-nf-call-iptables
+
+Install Docker, kubelet, kubeadm, and kubectl.
+In all three terminals, run the following command to install Docker, kubelet, kubeadm, and kubectl:
+
+sudo apt install -y docker-ce  kubelet=1.18.5-00 kubeadm=1.18.5-00 kubectl=1.18.5-00
+
+
+
+Initialize the Kubernetes cluster.
+In the Controller server terminal, run the following command to initialize the cluster using kubeadm:
+
+sudo kubeadm init --pod-network-cidr=10.244.0.0/16
+Set up local kubeconfig.
+In the Controller server terminal, run the following commands to set up local kubeconfig:
+
+sudo mkdir -p $HOME/.kube
+
+sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+
+sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+kubeadm join 172.31.120.116:6443 --token l89h72.6jkw5evfcfmdavbf \
+    --discovery-token-ca-cert-hash sha256:da6bffd32fe769c617f1d9edf8d66d4f3ff106653916c9dd99bbb53c408c3fc8
+
+How to add new node to the cluster:
+
+kubeadm token create --print-join-command
+
+
+kubeadm join 172.31.40.61:6443 --token rwxd81.dmmifd9tr09k3yve --discovery-token-ca-cert-hash sha256:f917f1c1a81d1f775d8746129e621c6c70041e41f82b26ff388765f037897de1
+
+Apply the flannel CNI plugin as a network overlay.
+In the Controller server terminal, run the following command to apply flannel:
+
+kubectl apply -f https://docs.projectcalico.org/v3.14/manifests/calico.yaml
+
+
+
+cluster check:
+
+Checking the master daemons:
+
+$ kubectl get cs
+NAME                 STATUS    MESSAGE              ERROR
+controller-manager   Healthy   ok
+scheduler            Healthy   ok
+etcd-0               Healthy   {"health": "true"}
+
+Check the status of the Kubernetes master:
+
+// check if the master is running
+$ kubectl cluster-info
+Kubernetes master is running at https://192.168.122.101:6443
+KubeDNS is running at https://192.168.122.101:6443/api/v1/namespaces/kube-system/services/kube-dns/proxy
+
+Check whether all the nodes are ready:
+$ kubectl get nodes
+NAME       STATUS    ROLES     AGE       VERSION
+ubuntu01   Ready     master    20m       v1.10.2
+ubuntu02   Ready     <none>    2m        v1.10.2
+
+
+Kubectl get pods -n tube-system
+
+
+List all the namespaces in the cluster
+kubectl get namespaces
+kubectl get ns
+
+create new namespace:
+
+kubectl create namespace producation
+
+kubectl create namespace srilekha --dry-run -o yaml  > ns.yaml
+
+kubectl delete ns producation
+
+How to delete all pods:
+
+kubectl delete po --all
+
+
+List all the pods in all namespaces
+kubectl get po --all-namespaces
+
+List all the pods in the particular namespace
+kubectl get po -n <namespace name>
+
+Create an nginx pod in a default namespace and verify the pod running
+// creating a pod
+kubectl run nginx --image=nginx --restart=Never -o yaml > test.yaml
+
+kubectl run python-flask --image=p0bailey/docker-flask --restart=Never
+
+Create the same nginx pod with a yaml file
+// get the yaml file with --dry-run flag
+kubectl run first-test --image=nginx --restart=Never --dry-run -o yaml > nginx1-pod.yaml
+// cat nginx1-pod.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  creationTimestamp: null
+  labels:
+    run: nginx
+  name: nginx
+spec:
+  containers:
+  - image: nginx
+    name: nginx
+    resources: {}
+  dnsPolicy: ClusterFirst
+  restartPolicy: Never
+status: {}
+// create a pod 
+kubectl create -f nginx-pod.yaml
+
+kubectl exec -it nginx /bin/sh
+
+To install netstat:
+
+# yum install net-tools     [On CentOS/RHEL]
+# apt install net-tools     [On Debian/Ubuntu]
+# zypper install net-tools  [On OpenSuse]
+# pacman -S netstat-nat     [On Arch Linux]
+
+To install ps :
+
+apt-get install -y procps
+
+Create the nginx pod and execute the simple shell on the pod
+// creating a pod
+kubectl run nginx --image=nginx --restart=Never
+// exec into the pod
+kubectl exec -it nginx /bin/sh
+
+Get the IP Address of the pod you just created
+kubectl get po nginx -o wide
+
+kubectl port-forward nginx 8080:80
+
+kubectl port-forward <pod> 8080:80
+
+
+kubectl expose deployment nginx --name=nginx-svc --port=80 --target-port=8080 --type=NodePort
+
+cat my-first-pod.yaml 
+apiVersion: v1
+kind: Pod
+metadata: 
+  name: my-first-pod
+spec:
+  containers:
+  - name: my-nginx
+    image: nginx
+  - name: my-centos
+    image: centos
+    command: ["/bin/sh", "-c", "while : ;do curl http://localhost:80/; sleep 10; done"]
+	
+Then, execute the kubectl create command to launch my-first-pod as follows:
+
+$ kubectl create -f my-first-pod.yaml 
+pod "my-first-pod" created 
+
+You can check kubectl get pods to see the status, as follows:
+//still downloading Docker images (0/2)
+$ kubectl get pods
+NAME           READY     STATUS              RESTARTS   AGE
+my-first-pod   0/2       ContainerCreating   0          14s
+
+
+//my-first-pod is running (2/2)
+$ kubectl get pods
+NAME           READY     STATUS    RESTARTS   AGE
+my-first-pod   2/2       Running   0          1m
+
+
+Let's check whether the CentOS container can access nginx or not. You can run the kubectl exec command to run bash on the CentOS container, then run the curl command to access the nginx, as follows:
+//run bash on my-centos container
+//then access to TCP/80 using curl
+$ kubectl exec my-first-pod -it -c my-centos -- /bin/bash
+
+[root@my-first-pod /]# 
+[root@my-first-pod /]# curl -L http://localhost:80
+<!DOCTYPE html>
+<html>
+<head>
+<title>Welcome to nginx!</title>
+<style>
+    body {
+        width: 35em;
+        margin: 0 auto;
+        font-family: Tahoma, Verdana, Arial, sans-serif;
+    }
+</style>
+</head>
+<body>
+<h1>Welcome to nginx!</h1>
+<p>If you see this page, the nginx web server is successfully installed and
+working. Further configuration is required.</p>
+
+<p>For online documentation and support please refer to
+<a href="http://nginx.org/">nginx.org</a>.<br/>
+Commercial support is available at
+<a href="http://nginx.com/">nginx.com</a>.</p>
+
+<p><em>Thank you for using nginx.</em></p>
+</body>
+</html>
+
+ORGANIZING PODS WITH LABELS:
+
+
+
+kubectl run nginx --image=nginx -l=env=dev,app=frontend --port=8080 --dry-run -o yaml > test.yaml
+
+kubectl run nginx1 --image=nginx -l=env=prod,app=frontend --port=8080 --dry-run -o yaml > test.yaml
+
+root@harikabeeram1c:~# kubectl get pods --show-labels
+NAME     READY   STATUS    RESTARTS   AGE   LABELS
+nginx    1/1     Running   0          80s   app=frontend,env=prod
+nginx1   1/1     Running   0          17s   app=frontend,env=dev
+root@harikabeeram1c:~# kubectl get pods --selector=env=prod
+NAME    READY   STATUS    RESTARTS   AGE
+nginx   1/1     Running   0          108s
+
+vi nginx-prod.yaml
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx
+  labels:
+    creation_method: manual          
+    env: prod                        
+spec:
+  containers:
+  - image: nginx
+    name: nginx
+    ports:
+    - containerPort: 8080
+      protocol: TCP
+ 
+kubectl create -f nginx-prod.yaml
+
+oot@harikabeeram1c:~# kubectl get po --show-labels
+NAME    READY   STATUS    RESTARTS   AGE    LABELS
+nginx   1/1     Running   0          3m2s   creation_method=manual,env=prod
+
+vi nginx-dev.yaml
+
+apiVersion: v1           
+kind: Pod
+metadata:
+  name: nginx-dev
+  labels:
+    creation_method: manual
+    env: dev
+spec:
+  containers:
+  - image: nginx
+    name: nginx-dev
+    ports:
+    - containerPort: 8080
+      protocol: TCP
+
+
+root@harikabeeram1c:~# kubectl get pods --selector=env=qa
+NAME    READY   STATUS    RESTARTS   AGE
+nginx   1/1     Running   0          6m55s
+
+root@harikabeeram1c:~# kubectl get po --show-labels
+NAME        READY   STATUS    RESTARTS   AGE     LABELS
+nginx       1/1     Running   0          7m26s   creation_method=manual,env=prod
+nginx-dev   1/1     Running   0          51s     creation_method=manual,env=dev
+
+root@harikabeeram1c:~# kubectl get pods -l env=prod
+NAME    READY   STATUS    RESTARTS   AGE
+nginx   1/1     Running   0          9m40s
+root@harikabeeram1c:~# kubectl get pods -l env=dev
+NAME        READY   STATUS    RESTARTS   AGE
+nginx-dev   1/1     Running   0          3m11s
+
+How to override lables
+
+kubectl label po nginx env=qa --overwrite
+
+oot@harikabeeram1c:~# kubectl get pods -l env=qa
+NAME        READY   STATUS    RESTARTS   AGE
+nginx-dev   1/1     Running   0          13m
+
+dont have labels
+
+kubectl get po -l '!env'
+
+
+node lables:
+
+kubectl label node harikabeeram3c.mylabserver.com project=test-project
+
+root@harikabeeram1c:~# kubectl get nodes --show-labels
+NAME                                STATUS   ROLES    AGE   VERSION   LABELS
+harikabeeram1c.mylabserver.com   Ready    master   34m   v1.18.5   beta.kubernetes.io/arch=amd64,beta.kubernetes.io/os=linux,kubernetes.io/arch=amd64,kubernetes.io/hostname=harikabeeram1c.mylabserver.com,kubernetes.io/os=linux,node-role.kubernetes.io/master=
+harikabeeram2c.mylabserver.com   Ready    <none>   34m   v1.18.5   beta.kubernetes.io/arch=amd64,beta.kubernetes.io/os=linux,kubernetes.io/arch=amd64,kubernetes.io/hostname=harikabeeram2c.mylabserver.com,kubernetes.io/os=linux
+harikabeeram3c.mylabserver.com   Ready    <none>   33m   v1.18.5   beta.kubernetes.io/arch=amd64,beta.kubernetes.io/os=linux,kubernetes.io/arch=amd64,kubernetes.io/hostname=harikabeeram3c.mylabserver.com,kubernetes.io/os=linux,project=test-project
+
+kubectl get nodes --show-labels
+
+kubectl get nodes -l project=test-project
+
+vi nodeSelector.yaml
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx-test
+  labels:
+    creation_method: manual
+    env: dev
+spec:
+  nodeSelector:
+     project: "test-project"
+  containers:
+  - image: nginx
+    name: nginx-test
+    ports:
+    - containerPort: 8080
+      protocol: TCP
+
+Remove label to the node
+
+kubectl label node harikabeeram3c.mylabserver.com project-
+
+Taints and Tolerations:
+
+https://docs.openshift.com/container-platform/3.6/admin_guide/scheduling/taints_tolerations.html
+
+kubectl taint node harikabeeram2c.mylabserver.com app=bule:NoSchedule
+
+kubectl taint node harikabeeram3c.mylabserver.com app=red:NoSchedule
+
+root@harikabeeram1c:~# kubectl describe node harikabeeram1c.mylabserver.com | grep -i taint
+Taints:             node-role.kubernetes.io/master:NoSchedule
+root@harikabeeram1c:~# kubectl describe node harikabeeram2c.mylabserver.com | grep -i taint
+Taints:             app=bule:NoSchedule
+root@harikabeeram1c:~# kubectl describe node harikabeeram3c.mylabserver.com | grep -i taint
+Taints:             app=red:NoSchedule
+
+root@harikabeeram1c:~# kubectl run test-one-taint --image=nginx 
+pod/test-one-taint created
+
+root@harikabeeram1c:~# kubectl run test-two-taint --image=nginx 
+pod/test-two-taint created
+root@harikabeeram1c:~# kubectl get pods | grep test-
+test-one-taint   0/1     Pending   0          2m3s
+test-two-taint   0/1     Pending   0          16s
+root@harikabeeram1c:~# 
+
+kubectl describe pod test-one-taint
+
+Deploying pod in app=blue taint node
+
+vi taint.yaml
+
+apiVersion: v1
+kind: Pod
+metadata:
+  creationTimestamp: null
+  labels:
+    run: two-taint
+  name: two-taint
+spec:
+  containers:
+  - image: redis
+    name: two-taint
+  tolerations:
+  - key: "app"
+    operator: "Equal"
+    value: "bule"
+    effect: "NoSchedule"
+
+Kubectl create -f taint.yaml
+
+Untainted node:
+oot@harikabeeram1c:~# kubectl describe node harikabeeram3c.mylabserver.com | grep -i taint
+Taints:             app=red:NoSchedule
+root@harikabeeram1c:~# kubectl run nginx-taint --image=nginx 
+pod/nginx-taint created
+root@harikabeeram1c:~# kubectl get pods
+NAME          READY   STATUS    RESTARTS   AGE
+nginx         1/1     Running   0          56m
+nginx-taint   0/1     Pending   0          6s
+nginx-test    1/1     Running   0          45m
+nginx1        1/1     Running   0          54m
+nginx2        1/1     Running   0          52m
+root@harikabeeram1c:~# kubectl taint node harikabeeram2c.mylabserver.com app=red:NoSchedule-
+node/harikabeeram3c.mylabserver.com untainted
+root@harikabeeram1c:~# kubectl get pods
+NAME          READY   STATUS    RESTARTS   AGE
+nginx         1/1     Running   0          56m
+nginx-taint   1/1     Running   0          44s
+nginx-test    1/1     Running   0          46m
+nginx1        1/1     Running   0          55m
+nginx2        1/1     Running   0          53m
+
+
+Replication set:
+
+https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/
+
+vi rs.yaml
+
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: frontend
+  labels:
+    app: redis
+    tier: frontend
+spec:
+  # modify replicas according to your case
+  replicas: 3
+  selector:
+    matchLabels:
+      tier: frontend
+  template:
+    metadata:
+      labels:
+        tier: frontend
+    spec:
+      containers:
+      - name: test-redis
+        image: redis
+
+root@harikabeeram1c:~# kubectl scale rs frontend --replicas=5
+replicaset.apps/frontend scaled
+
+root@harikabeeram1c:~# kubectl get pods --selector tier=frontend
+NAME             READY   STATUS    RESTARTS   AGE
+frontend-8qt6c   1/1     Running   0          2m54s
+frontend-c7x8m   1/1     Running   0          4m32s
+frontend-hmhdq   1/1     Running   0          2m54s
+frontend-mph2w   1/1     Running   0          4m32s
+frontend-w5gjk   1/1     Running   0          4m32s
+
+root@harikabeeram1c:~# kubectl delete rs frontend
+replicaset.apps "frontend" deleted
+
+kubectl cordon harikabeeram2c.mylabserver.com
+kubectl uncordon harikabeeram2c.mylabserver.com
+kubectl drain harikabeeram2c.mylabserver.com
+kubectl drain harikabeeram2c.mylabserver.com --ignore-daemonsets
+kubectl get pods
+kubectl get pods -o wide
+
+install metrics server:
+
+kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/download/v0.4.0/components.yaml
+
+kubectl logs <pod> -n kube-system
+
+wget https://github.com/kubernetes-sigs/metrics-server/releases/download/v0.4.0/components.yaml
+
+containers:
+      - name: metrics-server
+        image: k8s.gcr.io/metrics-server-amd64:v0.3.7
+        args:
+          - --cert-dir=/tmp
+          - --secure-port=4443
+          - --kubelet-insecure-tls
+          - --kubelet-preferred-address-types=InternalIP,ExternalIP,Hostname
+
+Kubectl apply -f components.yaml
+
+kubectl get deploy,svc -n kube-system |egrep metrics-server
+
+kubectl get apiservices |egrep metrics
+
+Autoscaling:
+
+
+kubectl apply -f https://k8s.io/examples/application/php-apache.yaml
+
+kubectl autoscale deployment php-apache --cpu-percent=80 --min=1 --max=4
+
+kubectl exec -it <pod> /bin/bash
+
+kubectl get hpa
+
+for i in $(seq $(getconf _NPROCESSORS_ONLN)); do yes > /dev/null & done
+
+Killall yes or kill -8 pid
+
+kubectl delete hpa php-apache
+
+https://linuxconfig.org/how-to-stress-test-your-cpu-on-linux
+
+
+
+
+
+DaemonSet:
+
+vi test.yaml
+
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  creationTimestamp: null
+  labels:
+    app: dem
+  name: dem
+spec:
+  selector:
+    matchLabels:
+      app: dem
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: dem
+    spec:
+      containers:
+      - image: nginx
+        name: nginx
+
+root@harikabeeram1c:~# kubectl delete daemonset dem
+daemonset.apps "dem" deleted
+
+Statefulset:
+
+vi statefulset.yaml
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx
+  labels:
+    app: nginx
+spec:
+  ports:
+  - port: 80
+    name: web
+  clusterIP: None
+  selector:
+    app: nginx
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: web
+spec:
+  serviceName: "nginx"
+  replicas: 2
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: k8s.gcr.io/nginx-slim:0.8
+        ports:
+        - containerPort: 80
+          name: web
+
+
+Delete statefulset:
+
+kubectl delete statefulset web
+
+
+
+Deployment: In general cases, Kubernetes Deployments are used together with ReplicaSet for complete Pod management: container rolling updates, load balancing, and service exposing.
+
+kubectl run <replication controller name> --image=<image name> --replicas=<number of replicas> [--port=<exposing port>]
+
+// run a deployment with 2 replicas for the image nginx and expose the container port 80
+$ kubectl create deployment --image=nginx my-first-nginx
+
+
+$ kubectl run my-first-nginx --image=nginx --replicas=2 --port=80(oldone no more use)
+deployment "my-first-nginx" created
+
+The name of deployment <my-first-nginx> cannot be duplicated
+
+The resource (pods, services, deployment, and so on) in one Kubernetes namespace cannot be duplicated. If you run the preceding command twice, the following error will pop up:  
+
+Error from server (AlreadyExists): deployments.extensions "my-first-nginx" already exists
+
+// get all pods
+$ kubectl get pods
+NAME                              READY     STATUS    RESTARTS   AGE
+my-first-nginx-7dcd87d4bf-jp572   1/1       Running   0          7m
+my-first-nginx-7dcd87d4bf-ns7h4   1/1       Running   0          7m
+
+// check the status of your deployment
+$ kubectl get deployment
+NAME             DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
+my-first-nginx   2         2         2            2           2m
+
+Exposing the port for external access:
+
+// expose port 80 for replication controller named my-first-nginx
+$ kubectl expose deployment my-first-nginx --port=80 --type=LoadBalancer
+service "my-first-nginx" exposed
+
+// get all services
+$ kubectl get service
+NAME             TYPE           CLUSTER-IP      EXTERNAL-IP   PORT(S)        AGE
+kubernetes       ClusterIP      10.96.0.1       <none>        443/TCP        2h
+my-first-nginx   LoadBalancer   10.102.141.22   <pending>     80:31620/TCP   3m
+
+
+Scale up and down manually with the kubectl scale command
+Assume that today we'd like to scale our nginx Pods from two to four:
+
+// kubectl scale --replicas=<expected_replica_num> deployment <deployment_name>
+# kubectl scale --replicas=4 deployment my-first-nginx
+deployment "my-nginx" scaled
+Let's check how many pods we have now:
+
+# kubectl get pods
+NAME READY STATUS RESTARTS AGE
+my-nginx-6484b5fc4c-9v7dc 1/1 Running 0 1m
+my-nginx-6484b5fc4c-krd7p 1/1 Running 0 1m
+my-nginx-6484b5fc4c-nsvzt 0/1 ContainerCreating 0 2s
+my-nginx-6484b5fc4c-v68dr 1/1 Running 0 2s
+
+
+We could find two more Pods are scheduled. One is already running and another one is creating. Eventually, we will have four Pods up and running if we have enough compute resources.
+
+Kubectl scale (also kubectl autoscale!) supports Replication Controller (RC) and Replica Set (RS), too. However, deployment is the recommended way to deploy Pods.
+We could also scale down with the same kubectl command, just by setting the replicas parameter lower:
+
+// kubectl scale –replicas=<expected_replica_num> deployment <deployment_name>
+# kubectl scale --replicas=2 deployment my-first-nginx
+deployment "my-nginx" scaled
+Now, we'll see two Pods are scheduled to be terminated:
+
+# kubectl get pods
+NAME READY STATUS RESTARTS AGE
+my-nginx-6484b5fc4c-9v7dc 1/1 Running 0 1m
+my-nginx-6484b5fc4c-krd7p 1/1 Running 0 1m
+my-nginx-6484b5fc4c-nsvzt 0/1 Terminating 0 23s
+my-nginx-6484b5fc4c-v68dr 0/1 Terminating 0 23s
+
+
+There is an option, --current-replicas, which specifies the expected current replicas. If it doesn't match, Kubernetes doesn't perform the scale function as follows:
+
+// adding –-current-replicas to precheck the condistion for scaling.
+# kubectl scale --current-replicas=3 --replicas=4 deployment my-first-nginx
+error: Expected replicas to be 3, was 2
+
+Stopping the application:
+
+// stop deployment named my-first-nginx
+$ kubectl delete deployment my-first-nginx
+deployment.extensions "my-first-nginx" deleted
+
+// stop service named my-first-nginx
+$ kubectl delete service my-first-nginx
+service "my-first-nginx" deleted
+
+How it work:
+
+kubectl describe service my-first-nginx
+Name:                     my-first-nginx
+Namespace:                default
+Labels:                   run=my-first-nginx
+Annotations:              <none>
+Selector:                 run=my-first-nginx
+Type:                     LoadBalancer
+IP:                       10.103.85.175
+Port:                     <unset>  80/TCP
+TargetPort:               80/TCP
+NodePort:                 <unset>  31723/TCP
+Endpoints:                192.168.79.10:80,192.168.79.9:80
+Session Affinity:         None
+External Traffic Policy:  Cluster
+Events:                   <none>
+
+// curl from service IP
+$ curl 10.103.85.175:80
+<!DOCTYPE html>
+<html>
+<head>
+<title>Welcome to nginx!</title>
+<style>
+    body {
+        width: 35em;
+        margin: 0 auto;
+        font-family: Tahoma, Verdana, Arial, sans-serif;
+    }
+</style>
+</head>
+<body>
+<h1>Welcome to nginx!</h1>
+<p>If you see this page, the nginx web server is successfully installed and
+working. Further configuration is required.</p>
+<p>For online documentation and support please refer to
+<a href="http://nginx.org/">nginx.org</a>.<br/>
+Commercial support is available at
+<a href="http://nginx.com/">nginx.com</a>.</p>
+<p><em>Thank you for using nginx.</em></p>
+</body>
+</html>
+It will be the same result if we curl to the target port of the pod directly:
+
+// curl from endpoint, the content is the same as previous nginx html
+$ curl 192.168.79.10:80
+<!DOCTYPE html>
+<html>
+...
+If you'd like to try out external access, use your browser to access the external IP address. Please note that the external IP address depends on which environment you're running in.
+
+In the Google compute engine, you could access it via a ClusterIP with a proper rewall rules setting:
+
+$ curl http://<clusterIP>
+In a custom environment, such as on-premise data center, you could go through the IP address of nodes to access :
+
+$ curl http://<nodeIP>:<nodePort>
+You should be able to see the following page using a web browser:
+
+
+Updating a Deployment:
+
+Follow the steps given below to update your Deployment:
+
+Let's update the nginx Pods to use the nginx:1.18 image instead of the nginx:1.19 image.
+
+kubectl set image deployment/test-deploy nginx=nginx:1.18 --record
+
+or simply use the following command:
+
+kubectl set image deployment/my-first-nginx nginx=nginx:1.18 --record
+
+kubectl rollout status -w deployment/frontend
+
+To see the rollout status, run:
+
+kubectl rollout status deployment/my-first-nginx
+The output is similar to this:
+
+Undo deployment:
+
+kubectl rollout undo deployment/frontend
+
+Waiting for rollout to finish: 2 out of 3 new replicas have been updated...
+or
+
+deployment "nginx-deployment" successfully rolled out
+
+kubectl rollout undo deployment my-nginx --to-revision=2
+
+kubectl rollout status -w deployment/frontend 
+
+Jobs:
+
+Kubectl create job job-nginx --image=nginx --restart=Never > job.yaml
+
+Cronjob:
+
+Kubectl create cronjob cron-nginx --image=nginx --seheduke="30 21 * * *"
+
+
+Liveness Probe:
+
+# YAML example
+# liveness-pod-example.yaml
+#
+apiVersion: v1 
+kind: Pod 
+metadata: 
+  name: liveness-request 
+spec: 
+  containers: 
+  - name: liveness 
+    image: nginx 
+    ports: 
+        - containerPort: 80 
+    livenessProbe: 
+      httpGet: 
+        path: / 
+        port: 80 
+      initialDelaySeconds: 2 #Default 0 
+      periodSeconds: 2 #Default 10 
+      timeoutSeconds: 1 #Default 1 
+      successThreshold: 1 #Default 1 
+      failureThreshold: 3 #Default 3
+    #readinessProbe: 
+    #  httpGet: 
+    #    path: / 
+    #    port: 80 
+    # initialDelaySeconds: 5
+    #  periodSeconds: 2
+
+kubectl create -f liveness-pod-example.yaml
+
+kubectl describe pod liveness-request
+
+kubectl exec -it liveness-request -- rm /usr/share/nginx/html/index.html
+
+kubectl describe pod liveness-request 
+
+
+https://www.weave.works/blog/resilient-apps-with-liveness-and-readiness-probes-in-kubernetes
+
+
+Configmap:
+
+Literal values:
+
+$ kubectl create configmap db-config --from-literal=db=staging
+configmap/db-config created
+Single file with environment variables:
+
+$ kubectl create configmap db-config --from-env-file=config.env
+configmap/db-config created
+Single file:
+
+$ kubectl create configmap db-config --from-file=config.txt
+configmap/db-config created
+Directory containing files:
+
+$ kubectl create configmap db-config --from-file=app-config
+configmap/db-config created
+
+
+Example 3-1. ConfigMap YAML manifest
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backend-config
+data:
+  database_url: jdbc:postgresql://localhost/test
+  user: fred
+
+Consuming a ConfigMap as Environment Variables
+Once the ConfigMap has been created, it can be consumed by one or many Pods. Here, we are exploring how to inject the key-value pairs of a ConfigMap as environment variables. The following Pod definition references the ConfigMap named backend-config and injects the key-value pairs as environment variables with the help of envFrom.configMapRef.
+
+Example 3-2. Injecting ConfigMap key-value pairs into container
+apiVersion: v1
+kind: Pod
+metadata:
+  name: configured-pod
+spec:
+  containers:
+    - image: nginx:1.19.0
+      name: app
+      envFrom:
+        - configMapRef:
+            name: backend-config
+
+
+
+$ kubectl exec configured-pod -- env
+...
+database_url=jdbc:postgresql://localhost/test
+user=fred
+...
+
+Sometimes, key-value pairs do not conform to typical naming conventions for environment variables or can’t be changed without impacting running services. You can redefine the keys used to inject an environment variable into a Pod with the valueFrom attribute. The following example turns the key database_url into DATABASE_URL and the key user into USERNAME.
+
+Example 3-3. Reassigning environment variable keys for ConfigMap entries
+apiVersion: v1
+kind: Pod
+metadata:
+  name: configured-pod
+spec:
+  containers:
+    - image: nginx:1.19.0
+      name: app
+      env:
+        - name: DATABASE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: backend-config
+              key: database_url
+        - name: USERNAME
+          valueFrom:
+            configMapKeyRef:
+              name: backend-config
+              key: user
+The resulting environment variables available to the container now follow the typical conventions for environment variables.
+
+$ kubectl exec configured-pod -- env
+...
+DATABASE_URL=jdbc:postgresql://localhost/test
+USERNAME=fred
+...
+
+Mounting a ConfigMap as Volume:
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: configured-pod
+spec:
+  containers:
+    - image: nginx:1.19.0
+      name: app
+      volumeMounts:
+        - name: config-volume
+          mountPath: /etc/config
+  volumes:
+    - name: config-volume
+      configMap:
+        name: backend-config
+
+$ kubectl exec -it configured-pod -- /bin/sh
+# ls -1 /etc/config
+database_url
+user
+# cat /etc/config/database_url
+jdbc:postgresql://localhost/test
+# cat /etc/config/user
+fred
+
+
+https://stackoverflow.com/questions/59771150/how-to-use-a-config-map-to-create-a-single-file-within-container
+
+
+Secrets:
+
+Literal values:
+
+$ kubectl create secret generic db-creds --from-literal=pwd=s3cre!
+secret/db-creds created
+File containing environment variables:
+
+$ kubectl create secret generic db-creds --from-env-file=secret.env
+secret/db-creds created
+SSH key file:
+
+$ kubectl create secret generic db-creds --from-file=id_rsa=~/.ssh/id_rsa
+secret/db-creds created
+
+echo -n 's3cre!' | base64
+czNjcmUh
+
+apiVersion: v1
+kind: Secret
+metadata:
+  name: app-secret
+type: Opaque
+data:
+  pwd: czNjcmUh
+
+Consuming a Secret as Environment Variables:
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: configured-pod
+spec:
+  containers:
+    - image: nginx:1.19.0
+      name: app
+      envFrom:
+        - secretRef:
+            name: db-creds
+
+$ kubectl exec configured-pod -- env
+...
+pwd=s3cre!
+...
+
+Mounting a Secret as Volume:
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: configured-pod
+spec:
+  containers:
+    - image: nginx:1.19.0
+      name: app
+      volumeMounts:
+        - name: secret-volume
+          mountPath: /var/app
+          readOnly: true
+  volumes:
+    - name: secret-volume
+      secret:
+        secretName: ssh-key
+
+$ kubectl exec -it configured-pod -- /bin/sh
+# ls -1 /var/app
+id_rsa
+# cat /var/app/id_rsa
+-----BEGIN RSA PRIVATE KEY-----
+Proc-Type: 4,ENCRYPTED
+DEK-Info: AES-128-CBC,8734C9153079F2E8497C8075289EBBF1
+...
+-----END RSA PRIVATE KEY-----
+
+Creating a ResourceQuota:
+
+Setting an upper limit for the number of objects that can be created for a specific type e.g. a maximum of 3 Pods.
+
+Limiting the total sum of compute resources e.g. 3 GiB of RAM.
+
+Expecting a Quality of Service (QoS) class for a Pod e.g. BestEffort to indicate that the Pod must not make any memory or CPU limits or requests.
+
+$ kubectl create namespace team-awesome
+namespace/team-awesome created
+$ kubectl get namespace
+NAME           STATUS   AGE
+team-awesome   Active   23s
+
+Next, define the ResourceQuota in YAML. To demonstrate the functionality of a ResourceQuota, we will add constraints to the namespace:
+
+Limit the number of Pods to 2.
+
+Define the minimum resources requested by a Pod to 1 CPU and 1024m of RAM.
+
+Define the minimum resources used by a Pod to 4 CPUs and 4096m of RAM.
+
+
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: awesome-quota
+spec:
+  hard:
+    pods: 2
+    requests.cpu: "1"
+    requests.memory: 1024m
+    limits.cpu: "4"
+    limits.memory: 2048m
+
+$ kubectl create -f awesome-quota.yaml --namespace=team-awesome
+resourcequota/awesome-quota created
+kubectl describe resourcequota awesome-quota --namespace=team-awesome
+Name:            awesome-quota
+Namespace:       team-awesome
+Resource         Used  Hard
+--------         ----  ----
+limits.cpu       0     4
+limits.memory    0     4096m
+pods             0     2
+requests.cpu     0     1
+requests.memory  0     1024m
+
+Exploring ResourceQuota Enforcement:
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx
+spec:
+  containers:
+    - image: nginx:1.18.0
+      name: nginx
+
+From the YAML definition above, create a Pod and see what happens. In fact, Kubernetes will reject the creation of the object with the following error message.
+
+$ kubectl create -f nginx-pod.yaml --namespace=team-awesome
+Error from server (Forbidden): error when creating "nginx-pod.yaml": \
+pods "nginx" is forbidden: failed quota: awesome-quota: must specify \
+limits.cpu,limits.memory,requests.cpu,requests.memory
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx
+spec:
+  containers:
+    - image: nginx:1.18.0
+      name: nginx
+      resources:
+        requests:
+          cpu: "0.5"
+          memory: "512m"
+        limits:
+          cpu: "1"
+          memory: "1024m"
+
+$ kubectl create -f nginx-pod1.yaml --namespace=team-awesome
+pod/nginx1 created
+$ kubectl create -f nginx-pod2.yaml --namespace=team-awesome
+pod/nginx2 created
+$ kubectl describe resourcequota awesome-quota --namespace=team-awesome
+Name:            awesome-quota
+Namespace:       team-awesome
+Resource         Used   Hard
+--------         ----   ----
+limits.cpu       2      4
+limits.memory    2048m  4096m
+pods             2      2
+requests.cpu     1      1
+requests.memory  1024m  1024m
+
+$ kubectl create -f nginx-pod3.yaml --namespace=team-awesome
+Error from server (Forbidden): error when creating "nginx-pod3.yaml": \
+pods "nginx3" is forbidden: exceeded quota: awesome-quota, requested: \
+pods=1,requests.cpu=500m,requests.memory=512m, used: pods=2,requests.cpu=1, \
+requests.memory=1024m, limited: pods=2,requests.cpu=1,requests.memory=1024m
+
+Persistent Volumes:
+
+Emptydir:
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-pd
+spec:
+  containers:
+  - image: nginx
+    name: test-container
+    volumeMounts:
+    - mountPath: /cache
+      name: cache-volume
+  volumes:
+  - name: cache-volume
+    emptyDir: {}
+
+Hostpath:
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-pd
+spec:
+  containers:
+  - image: nginx
+    name: test-container
+    volumeMounts:
+    - mountPath: /test-pd
+      name: test-volume
+  volumes:
+  - name: test-volume
+    hostPath:
+      # directory location on host
+      path: /data
+      # this field is optional
+      type: Directory
+
+
+Pv:
+
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv0003
+spec:
+  capacity:
+    storage: 5Gi
+  accessModes:
+    - ReadWriteMany
+  hostPath: 
+    Path: /data
+
+
+
+
+Pvc:
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: myclaim
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 3Gi
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: mypod
+spec:
+  containers:
+    - name: myfrontend
+      image: nginx
+      volumeMounts:
+      - mountPath: "/var/www/html"
+        name: mypd
+  volumes:
+    - name: mypd
+      persistentVolumeClaim:
+        claimName: myclaim
+
+
+Nfs pv and pvc:
+
+Pv
+
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv0003
+spec:
+  capacity:
+    storage: 5Gi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Recycle
+  storageClassName: nfs
+#  mountOptions:
+#    - hard
+#    - nfsvers=4.1
+  nfs:
+    path: /nfs_share_dir
+    server: 172.31.3.53
+
+
+Pvc:
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nfs-pvc
+spec:
+  storageClassName: nfs
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+
+Nginx:
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: mypod
+spec:
+  containers:
+    - name: myfrontend
+      image: nginx
+      volumeMounts:
+      - mountPath: "/usr/share/nginx/html"
+        name: mypd
+  volumes:
+    - name: mypd
+      persistentVolumeClaim:
+        claimName: nfs-pvc
+
+
+
+
+Controlling Access in Kubernetes with RBAC:
+
+https://vimalpaliwal.com/blog/2019/12/8064ef5f27/how-to-create-a-custom-kubeconfig-with-limited-access-to-k8s-cluster-using-service-account-token-and-rbac.html
+
+http://docs.shippable.com/deploy/tutorial/create-kubeconfig-for-self-hosted-kubernetes-cluster/
+
+
+Create a Role for the dev User
+Test access by attempting to list pods as the dev user:
+
+kubectl get pods -n beebox-mobile --kubeconfig dev-k8s-config
+We'll get an error message.
+
+Create a role spec file:
+
+vi pod-reader-role.yml
+Add the following to the file:
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: beebox-mobile
+  name: pod-reader
+rules:
+- apiGroups: [""]
+  resources: ["pods", "pods/log"]
+  verbs: ["get", "watch", "list"]
+Save and exit the file by pressing Escape followed by :wq.
+
+Create the role:
+
+kubectl apply -f pod-reader-role.yml
+Bind the Role to the dev User and Verify Your Setup Works
+Create the RoleBinding spec file:
+
+vi pod-reader-rolebinding.yml
+Add the following to the file:
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: pod-reader
+  namespace: beebox-mobile
+subjects:
+- kind: User
+  name: dev
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: Role
+  name: pod-reader
+  apiGroup: rbac.authorization.k8s.io
+Save and exit the file by pressing Escape followed by :wq.
+
+Create the RoleBinding:
+
+kubectl apply -f pod-reader-rolebinding.yml
+Test access again to verify you can successfully list pods:
+
+kubectl get pods -n beebox-mobile --kubeconfig dev-k8s-config
+This time, we should see a list of pods (there's just one).
+
+Verify the dev user can read pod logs:
+
+kubectl logs beebox-auth -n beebox-mobile --kubeconfig dev-k8s-config
+We'll get an Auth processing... message.
+
+Verify the dev user cannot make changes by attempting to delete a pod:
+
+kubectl delete pod beebox-auth -n beebox-mobile --kubeconfig dev-k8s-config
+
+
+Creating a Service for a Pod:
+
+// using subcommand "run" with "never" restart policy, and without replica, you can get a Pod
+// here we create a nginx container with port 80 exposed to outside world of Pod
+$ kubectl run nginx-pod --image=nginx --port=80 --restart="Never" --labels="project=My-Happy-Web,role=frontend,env=test"
+pod "nginx-pod" created
+
+// expose Pod "nginx-pod" with a Service officially with port 8080, target port would be the exposed port of pod
+$ kubectl expose pod nginx-pod --port=8081 --target-port=80 --name="nginx-service"
+service "nginx-service" exposed
+
+// "svc" is the abbreviate of Service, for the description's resource type
+$ kubectl describe svc nginx-service
+Name:              nginx-service
+Namespace:         default
+Labels:            env=test
+                   project=My-Happy-Web
+                   role=frontend
+Annotations:       <none>
+Selector:          env=test,project=My-Happy-Web,role=frontend
+Type:              ClusterIP
+IP:                10.96.107.213
+Port:              <unset>  8080/TCP
+TargetPort:        80/TCP
+Endpoints:         192.168.79.24:80
+Session Affinity:  None
+Events:            <none>
+
+
+Creating a Service for a Deployment with an external IP:
+
+// using subcommand "run" and assign 2 replicas
+$ kubectl run nginx-deployment --image=nginx --port=80 --replicas=2 --labels="env=dev,project=My-Happy-Web,role=frontend"
+deployment.apps "nginx-deployment" created
+// explicitly indicate the selector of Service by tag "--selector", and assign the Service an external IP by tag "--external-ip"
+// the IP 192.168.122.102 demonstrated here is the IP of one of the Kubernetes node in system
+$ kubectl expose deployment nginx --port=8080 --target-port=80 --name="another-nginx-service" --selector="project=My-Happy-Web,role=frontend" --external-ip="192.168.122.102"
+service "another-nginx-service" exposed
+
+kubectl describe svc another-nginx-service
+Name:              another-nginx-service
+Namespace:         default
+Labels:            env=dev
+                   project=My-Happy-Web
+                   role=frontend
+Annotations:       <none>
+Selector:          project=My-Happy-Web,role=frontend
+Type:              ClusterIP
+IP:                10.100.109.230
+External IPs:      192.168.122.102
+Port:              <unset>  8080/TCP
+TargetPort:        80/TCP
+Endpoints:         192.168.79.15:80,192.168.79.21:80,192.168.79.24:80
+Session Affinity:  None
+Events:            <none>
+
+
+emptyDir
+emptyDir is the simplest volume type, which will create an empty volume for containers in the same Pod to share. When the Pod is removed, the files in emptyDir will be erased, as well. emptyDir is created when a Pod is created. In the following configuration file, we'll create a Pod running Ubuntu with commands to sleep for 3600 seconds. As you can see, one volume is defined in the volumes section with name data, and the volumes will be mounted under the /data-mount path in the Ubuntu container:
+
+// configuration file of emptyDir volume
+# cat 2-6-1_emptyDir.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ubuntu
+  labels:
+    name: ubuntu
+spec:
+  containers:
+    - image: ubuntu
+      command:
+        - sleep
+        - "3600"
+      imagePullPolicy: IfNotPresent
+      name: ubuntu
+      volumeMounts:
+        - mountPath: /data-mount
+          name: data
+      volumes:
+        - name: data
+          emptyDir: {}
+
+// create pod by configuration file emptyDir.yaml
+# kubectl create -f 2-6-1_emptyDir.yaml
+pod "ubuntu" created
+
+kubectl describe pod <Pod name> | grep Node
+
+docker inspect <container ID>
+
+ "Mounts": [
+     ...
+  {
+                "Type": "bind",
+                "Source": "/var/lib/kubelet/pods/98c7c676-e9bd-11e7-9e8d-080027ac331c/volumes/kubernetes.io~empty-dir/data",
+                "Destination": "/data-mount",
+                "Mode": "",
+                "RW": true,
+                "Propagation": "rprivate"
+            }
+     ...
+]
+
+Taking the previous configuration file 2-6-1_emptyDir_mem.yaml as an example, it would be as follows:
+
+volumes:
+    -
+      name: data
+      emptyDir:
+        medium: Memory
+		
+# kubectl exec ubuntu df
+Filesystem 1K-blocks Used Available Use% Mounted on
+...
+tmpfs 1024036 0 1024036 0% /data-mount
+...
+
+hostPath:
+
+apiVersion: v1
+# cat 2-6-2_hostPath.yaml
+kind: Pod
+metadata:
+  name: ubuntu
+spec:
+  containers:
+    -
+      image: ubuntu
+      command:
+        - sleep
+        - "3600"
+      imagePullPolicy: IfNotPresent
+      name: ubuntu
+      volumeMounts:
+        -
+          mountPath: /data-mount
+          name: data
+  volumes:
+    -
+      name: data
+      hostPath:
+        path: /tmp/data
+		
+kubectl exec ubuntu touch /data-mount/sample
+
+NFS:
+
+# configuration file of nfs volume
+$ cat 2-6-3_nfs.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nfs
+spec:
+  containers:
+    -
+      name: nfs
+      image: ubuntu
+      volumeMounts:
+          - name: nfs
+            mountPath: "/data-mount"
+  volumes:
+  - name: nfs
+    nfs:
+      server: <your nfs server>
+      path: "/"
+	  
+Conditions:
+  Type Status
+  Ready True
+Volumes:
+  nfs:
+    Type: NFS (an NFS mount that lasts the lifetime of a pod)
+    Server: <your nfs server>
+    Path: /
+    ReadOnly: false
+	
+"Mounts": [
+ {
+            "Source": "/var/lib/kubelet/pods/<id>/volumes/kubernetes.io~nfs/nfs",
+            "Destination": "/data-mount",
+            "Mode": "",
+            "RW": true
+        },
+                          ...
+						  
+
+
+
+Run a deployment that includes at least one pod, and verify it was successful.
+In the Controller server terminal, run the following command to run a deployment of ngnix:
+
+kubectl create deployment nginx --image=nginx
+Verify its success:
+
+kubectl get deployments
+Verify the pod is running and available.
+In the Controller server terminal, run the following command to verify the pod is up and running:
+
+kubectl get pods
+Use port forwarding to extend port 80 to 8081, and verify access to the pod directly.
+In the Controller server terminal, run the following command to forward the container port 80 to 8081 (replace <pod_name> with the name in the output from the previous command):
+
+kubectl port-forward <pod_name> 8081:80
+
+Execute a command directly on a pod.
+In the original Controller server terminal, hit Ctrl+C to exit out of the running program.
+
+Still in Controller, execute the nginx version command from a pod (using the same <pod_name> as before):
+
+kubectl exec -it <pod_name> -- nginx -v
+Create a service, and verify connectivity on the node port.
+In the original Controller server terminal, run the following command to create a NodePort service:
+
+kubectl expose deployment nginx --port 80 --type NodePort
+
+View the service:
+
+kubectl get services
+Get the node the pod resides on.
+
+kubectl get po -o wide
+Verify the connectivity by using curl on the NODE from the previous step and the port from when we viewed the service. Make sure to replace YOUR_NODE and YOUR_PORT with appropriate values for this lab.
+
+curl -I YOUR_NODE:YOUR_PORT
+
+
+
+--------------------------------------------------------------------------------------------------------------------------------------------
+
+
+From Apt (Debian/Ubuntu)
+Members of the Helm community have contributed a Helm package for Apt. This package is generally up to date.
+
+curl https://baltocdn.com/helm/signing.asc | sudo apt-key add -
+sudo apt-get install apt-transport-https --yes
+echo "deb https://baltocdn.com/helm/stable/debian/ all main" | sudo tee /etc/apt/sources.list.d/helm-stable-debian.list
+sudo apt-get update
+sudo apt-get install helm
+
+Adding the Stable Repo to Helm v3
+To add the stable repo you need to install it using the url to the charts which are hosted in GCP:
+
+helm repo add stable https://charts.helm.sh/stable
+"stable" has been added to your repositories
+
+helm repo list
+
+helm repo update
+
+But what does that stable repository contain? List out the contents with the command:
+
+helm search repo stable
+
+
+Chart templates:
+
+Chart template getting started:
+
+helm create mychart
+
+helm create mycharttemp
+
+
+
+rm -rf mychart/templates/*
+
+
+
+
+
+
+
+configmap.yaml
+
+~~~~~~~~~~~~~
+
+
+
+apiVersion: v1
+
+kind: ConfigMap
+
+metadata:
+
+  name: mychart-configmap
+
+data:
+
+  myvalue: "Sample Config Map"
+
+  
+
+  
+
+  
+
+helm install helm-demo-configmap ./mychart
+
+
+
+helm ls
+
+
+
+kubectl get all
+
+
+
+
+
+helm get manifest helm-demo-configmap
+
+
+
+kubectl describe configmaps mychart-configmap
+
+
+
+
+
+helm uninstall helm-demo-configmap
+
+
+
+built-in objects
+
+ 
+
+https://helm.sh/docs/chart_template_guide/builtin_objects/
+
+
+
+
+
+apiVersion: v1
+
+kind: ConfigMap
+
+metadata:
+
+  name: {{ .Release.Name }}-configmap
+
+data:
+
+  myvalue: "Sample Config Map"
+
+
+
+
+
+helm install releasename-test ./mychart
+
+
+
+  
+
+helm get manifest releasename-test
+
+
+
+helm install --debug --dry-run dryrun-test ./mychart
+
+
+
+kubectl describe configmaps releasename-test-configmap
+
+
+
+helm uninstall releasename-test
+
+
+
+Read values for templates: 
+
+mychart/values.yaml
+
+ 
+
+ Remove old file > values.yaml
+ Add below values to values.yaml
+
+ costCode: CC98112
+
+ 
+
+ Add below values to configmap.yaml
+
+ costCode: {{ .Values.costCode }}
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-configmap
+data:
+  myvalue: "Sample Config Map"
+  costCode: {{ .Values.costCode }}
+
+ 
+
+ helm install --debug --dry-run firstdryrun ./mychart
+
+ 
+
+ 
+
+ helm install firstvalue ./mychart
+
+ 
+
+ 
+
+ helm get manifest firstvalue
+
+ 
+
+kubectl describe configmaps firstvalue-configmap
+
+helm uninstall firstvalue
+
+
+Set values to templates:
+
+helm install --dry-run --debug --set costCode=CC00000 valueseteg ./mychart
+
+ 
+
+  
+
+ helm install valueseteg ./mychart --set costCode=CC00000 
+
+ 
+
+ helm get manifest valueseteg
+
+ 
+
+ kubectl describe configmaps valueseteg-configmap
+
+ 
+
+ helm ls
+
+ 
+
+helm uninstall valueseteg
+
+
+Templete functions:
+
+
+chart functions
+
+ ~~~~~~~~~~~~~
+
+ 
+
+ 
+
+ https://masterminds.github.io/sprig/
+
+ 
+
+ https://godoc.org/text/template
+
+vi values.yaml
+
+ 
+
+ projectCode: aazzxxyy
+
+ infra:
+
+   zone: a,b,c
+
+   region: us-e
+
+
+
+ 
+
+ Zone: {{ quote .Values.infra.zone }}
+
+ Region: {{ quote .Values.infra.region }}
+
+ ProjectCode: {{ upper .Values.projectCode }}
+
+ 
+
+
+
+helm install --dry-run --debug valueseteg ./mychart
+
+Template pipeline and default values:
+
+pipeline
+
+ ~~~~~~~
+
+ 
+
+  pipeline: {{ .Values.projectCode | upper | quote }}
+
+  now: {{ now | date "2006-01-02" | quote }}
+
+  
+
+
+
+  
+
+  helm install --dry-run --debug valueseteg ./mychart
+
+  
+
+  ~~~~~~~~~~~~~~~~~~~~~~~``
+
+  default value
+
+  
+
+  
+
+  contact: {{ .Values.contact | default "1-800-123-0000" | quote }}
+
+  
+
+ 
+
+  
+
+  helm install --dry-run --debug valueseteg ./mychart
+
+  
+
+
+
+   
+
+  helm install --dry-run --debug --set contact=1-800-800-8888 valueseteg ./mychart
+
+Control flow if-else:
+
+projectCode: aazzxxyy
+
+   infra:
+
+     zone: a,b,c
+
+     region: us-e
+
+   
+
+   
+
+   
+
+ {{ if eq .Values.infra.region "us-e" }}ha: true{{ end }}
+
+ 
+
+ 
+
+ 
+
+ helm install --dry-run --debug controlif ./mychart
+
+ 
+
+ 
+
+ helm install controlif ./mychart 
+
+ 
+
+ 
+
+ helm get manifest controlif
+
+ 
+
+ helm uninstall controlif 
+
+ 
+
+   
+
+   
+
+ //Error
+
+   {{ if eq .Values.infra.region "us-e" }}
+
+     ha: true
+
+   {{ end }}
+
+   
+
+  
+
+    {{ if eq .Values.infra.region "us-e" }}
+
+    ha: true
+
+    {{ end }}
+
+    
+
+    
+
+   
+
+    {{- if eq .Values.infra.region "us-e" }}
+
+    ha: true
+
+    {{- end }}
+
+   
+
+   //Should not be done. Error
+
+   
+
+   {{- if eq .Values.infra.region "us-e" -}}
+
+   ha: true
+
+  {{- end -}}
+
+1. Create a k8s deployment resource named "nginx" 
+2. Create a secret named 'nginx-secret' and attach a 'nginx-secret' secret to /mnt in "nginx" deployment
+3. Create a configmap named 'nginx-cm' with index.html and attach a configmap nginx-cm to /usr/share/nginx/html/ in "nginx" deployment
+4. Create a NodePort service that will send the traffic to nginx deployment
+
+In the same cluster, can you work on the below 
+1. Create a test K8s user and assign an admin role to the namespace "test"
+2. Read K8s Upgrade docs - Upgrade the current cluster to the next k8s patch version
+3. Read k8s ETCD docs - Perform ETCD backup and restore in the current cluster
+
+can you work on the below
+1. Configure NFS
+2 create a pv and pvc 
+3. Attach a pvc to test pod on some path
+
+k create ns red
+k create ns blue
+
+k -n red create role secret-manager --verb=get --resource=secrets
+k -n red create rolebinding secret-manager --role=secret-manager --user=jane
+k -n blue create role secret-manager --verb=get --verb=list --resource=secrets
+k -n blue create rolebinding secret-manager --role=secret-manager --user=jane
+
+
+# check permissions
+k -n red auth can-i -h
+k -n red auth can-i create pods --as jane # no
+k -n red auth can-i get secrets --as jane # yes
+k -n red auth can-i list secrets --as jane # no
+
+k -n blue auth can-i list secrets --as jane # yes
+k -n blue auth can-i get secrets --as jane # yes
+
+k -n default auth can-i get secrets --as jane #no
+
+
+kubectl create ns test
+
+kubectl -n test create role test-admin --verb=* --resource=* --dry-run=client -o yaml 
+
+
+root@harikabeeram1c:~# kubectl -n test create role test-admin --verb=* --resource=*
+role.rbac.authorization.k8s.io/test-admin created
+root@harikabeeram1c:~# kubectl describe role test-admin
+Error from server (NotFound): roles.rbac.authorization.k8s.io "test-admin" not found
+root@harikabeeram1c:~# kubectl describe role test-admin -n test
+Name:         test-admin
+Labels:       <none>
+Annotations:  <none>
+PolicyRule:
+  Resources  Non-Resource URLs  Resource Names  Verbs
+  ---------  -----------------  --------------  -----
+  *          []                 []              [*]
+
+kubectl -n test create rolebinding test-admin --clusterrole=admin --user=test
+
+root@harikabeeram1c:~# kubectl describe rolebinding test-admin -n test
+Name:         test-admin
+Labels:       <none>
+Annotations:  <none>
+Role:
+  Kind:  ClusterRole
+  Name:  admin
+Subjects:
+  Kind  Name  Namespace
+  ----  ----  ---------
+  User  test  
+
+
+Kubectl -n test auth can-i get secrets --as test
+
+oot@harikabeeram1c:~# Kubectl -n test auth can-i get secrets --as test
+Kubectl: command not found
+root@harikabeeram1c:~# kubectl -n test auth can-i get secrets --as test
+yes
+root@harikabeeram1c:~# kubectl -n test auth can-i get pods --as test
+yes
+root@harikabeeram1c:~# kubectl -n test auth can-i ge deployments --as test
+no
+root@harikabeeram1c:~# kubectl -n test auth can-i ge delete --as test
+Warning: the server doesn't have a resource type 'delete'
